@@ -1,171 +1,146 @@
 # Collaborative Slate Editor with Supabase Realtime
 
-A real-time collaborative text editor built with [Slate.js](https://www.slatejs.org/), [Next.js](https://nextjs.org/), and [Supabase Realtime](https://supabase.com/docs/guides/realtime) for presence and collaboration features.
+[![Next.js](https://img.shields.io/badge/Next.js-15+-black?logo=nextdotjs)](https://nextjs.org/) [![Supabase](https://img.shields.io/badge/Supabase-Realtime-3FCF8E?logo=supabase)](https://supabase.com/) [![Slate.js](https://img.shields.io/badge/Slate.js-Editor-blue)](https://www.slatejs.org/) [![Yjs](https://img.shields.io/badge/Yjs-CRDT-yellow)](https://yjs.dev/)
 
-![Collaborative Editor Demo](./public//demo.gif)
+> **A real-time collaborative text editor built with Slate.js, Next.js, and Supabase Realtime presence.**
+
+---
+
+## Table of Contents
+
+- [Collaborative Slate Editor with Supabase Realtime](#collaborative-slate-editor-with-supabase-realtime)
+  - [Table of Contents](#table-of-contents)
+  - [Demo](#demo)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [Quick Start](#quick-start)
+  - [How It Works](#how-it-works)
+  - [Customization](#customization)
+  - [Deployment](#deployment)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
+  - [Resources](#resources)
+
+---
+
+## Demo
+
+<!-- markdownlint-disable MD033 -->
+<div style="text-align:center;margin:20px 0;">
+  <img src="./public/demo.gif" alt="Collaborative Editor Demo" style="width:100%;max-width:100vw;height:auto;display:block;" />
+</div>
+<!-- markdownlint-enable MD033 -->
+
+---
 
 ## Features
 
-- **Real-time collaboration**: Multiple users can edit the same document simultaneously
-- **Cursor presence**: See other users' cursors and selections in real-time
-- **Rich text formatting**: Support for basic formatting like bold text and code blocks
-- **Persistent connections**: Uses Supabase Realtime for robust real-time communication
-- **User awareness**: Shows which users are currently active in the document
-- **Conflict resolution**: Built on [Yjs](https://yjs.dev/) for conflict-free replicated data types
+- 📝 **Real-time collaboration** — Multiple users can edit the same document simultaneously
+- 👤 **Cursor presence** — See other users' cursors and selections in real-time
+- 🅱️ **Rich text formatting** — Bold, code blocks, and extensible formatting
+- 🔄 **Persistent connections** — Robust real-time communication via Supabase
+- 👥 **User awareness** — See who is active in the document
+- ⚡ **Conflict resolution** — Powered by Yjs CRDTs for seamless merging
+
+---
 
 ## Tech Stack
 
-- **Frontend**:
+**Frontend:**
 
-  - Next.js 15+
-  - React 19
-  - Tailwind CSS 4
-  - Slate.js for the editor
-  - slate-yjs for collaboration
+- Next.js 15+
+- React 19
+- Tailwind CSS 4
+- Slate.js (with [slate-yjs](https://github.com/BitPhinix/slate-yjs))
 
-- **Backend**:
-  - Supabase Realtime for broadcasting updates
-  - Yjs for CRDT (Conflict-free Replicated Data Type) operations
+**Backend:**
 
-## Getting Started
+- Supabase Realtime (for presence and updates)
+- Yjs (CRDT engine)
 
-### Prerequisites
+---
 
-- Node.js 18+ (or Bun)
-- Supabase account and project
+## Quick Start
 
-### Environment Setup
+```bash
+# 1. Clone the repository
+ git clone https://github.com/Spagestic/slate-supabase-realtime
+ cd slate-supabase-realtime
 
-1. Clone the repository:
+# 2. Install dependencies
+ npm install
+ # or: bun install
 
-   ```bash
-   git clone <your-repo-url>
-   cd slate-supabase-realtime
-   ```
+# 3. Add your Supabase credentials to .env.local
+#    (see .env.example for format)
 
-2. Install dependencies:
+# 4. Start the development server
+ npm run dev
+ # or: bun dev
+```
 
-   ```bash
-   npm install
-   # or
-   bun install
-   ```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-3. Create a `.env.local` file in the root directory with your Supabase credentials:
-
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-
-4. Start the development server:
-
-   ```bash
-   npm run dev
-   # or
-   bun dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+---
 
 ## How It Works
 
-### Architecture Overview
+The app combines Slate.js for the editor UI, Yjs for CRDT operations, and Supabase Realtime for broadcasting updates and presence:
 
-The application uses a combination of Slate.js for the editor UI, Yjs for CRDT operations, and Supabase Realtime for broadcasting these operations to all connected clients:
+1. **Editor Initialization**: Slate editor is enhanced with Yjs bindings and connects to a Supabase Realtime channel.
+2. **Collaboration Flow**: Edits are synced via Yjs and broadcast to all clients using Supabase.
+3. **Presence Management**: User info (name, cursor, selection) is tracked and broadcast for live awareness.
 
-1. **Editor Initialization**:
-
-   - Creates a Slate editor instance enhanced with Yjs bindings
-   - Connects to Supabase Realtime channel
-
-2. **Collaboration Flow**:
-
-   - User edits are captured by Slate and synchronized with the local Yjs document
-   - Yjs generates update messages that are broadcast via Supabase Realtime
-   - Other clients receive these updates and apply them to their local Yjs document
-   - Changes are reflected in each user's Slate editor
-
-3. **Presence Management**:
-   - User information (name, cursor position, selection) is tracked using the Awareness protocol
-   - This information is broadcast through the same Supabase Realtime channel
-   - Connected clients render cursor positions and selections for all active users
+---
 
 ## Customization
 
-### Modifying the Editor
+- **Editor logic**: See `app/page.tsx` for main editor logic.
+- **Custom Elements**: Extend `renderElement` for new block types.
+- **Custom Formatting**: Extend `renderLeaf` for new marks.
+- **Commands**: Add to the `CustomEditor` object.
+- **Styling**: Tailwind CSS in `app/globals.css` and `app/styles.css`.
 
-The editor components can be found in `app/page.tsx`. The main customization points are:
-
-- **Custom Elements**: Add new block types by extending the `renderElement` function
-- **Custom Formatting**: Add new formatting options by extending the `renderLeaf` function
-- **Editor Commands**: Add new commands to the `CustomEditor` object
-
-### Styling
-
-The project uses Tailwind CSS for styling. The main styles are in:
-
-- `app/globals.css` - Global styles
-- `app/styles.css` - Editor-specific styles
+---
 
 ## Deployment
 
-This Next.js application can be deployed to Vercel or any other platform that supports Next.js:
+This Next.js app can be deployed to Vercel or any platform supporting Next.js:
 
 ```bash
 npm run build
 npm run start
 ```
 
-For Vercel deployment, simply connect your GitHub repository to Vercel, and it will automatically deploy your application.
+For Vercel, connect your repo and deploy. See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying).
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please open an issue or submit a pull request.
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT — see the LICENSE file for details.
+
+---
 
 ## Acknowledgments
 
-- [Slate.js](https://www.slatejs.org/) - The rich text editor framework
-- [Supabase](https://supabase.com/) - For the real-time infrastructure
-- [Yjs](https://yjs.dev/) - For the CRDT implementation
-- [slate-yjs](https://github.com/BitPhinix/slate-yjs) - For connecting Slate with Yjs
-  This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- [Slate.js](https://www.slatejs.org/) — Rich text editor framework
+- [Supabase](https://supabase.com/) — Real-time infrastructure
+- [Yjs](https://yjs.dev/) — CRDT implementation
+- [slate-yjs](https://github.com/BitPhinix/slate-yjs) — Slate/Yjs integration
 
-## Getting Started
+---
 
-First, run the development server:
+## Resources
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Yjs Documentation](https://docs.yjs.dev/)
+- [Slate.js Documentation](https://docs.slatejs.org/)
