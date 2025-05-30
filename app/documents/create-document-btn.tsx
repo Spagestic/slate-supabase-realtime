@@ -8,9 +8,19 @@ export default function CreateDocumentBtn() {
   const supabase = createClient();
   const router = useRouter();
   const createDocument = async () => {
+    // Create proper initial Slate.js document structure
+    const initialContent = [
+      {
+        children: [{ text: "" }],
+      },
+    ];
+
     const { data, error } = await supabase
       .from("document")
-      .insert({ title: "", content: JSON.stringify([]) })
+      .insert({
+        title: "Untitled Document",
+        content: initialContent, // Store as jsonb directly
+      })
       .select()
       .single();
 
