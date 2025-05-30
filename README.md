@@ -29,7 +29,6 @@
 <!-- markdownlint-disable MD033 -->
 <div style="text-align:center;margin:20px 0; width:100%;">
   <img src="./public/demo.gif" alt="Collaborative Editor Demo" style="width:100%;max-width:100vw;height:auto;display:block;" />
-<video src="https://github.com/Spagestic/slate-supabase-realtime/blob/master/public/demo.mp4" width="400" controls></video>
 </div>
 
 <!-- markdownlint-enable MD033 -->
