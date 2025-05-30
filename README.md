@@ -30,6 +30,8 @@
 <div style="text-align:center;margin:20px 0; width:100%;">
   <img src="./public/demo.gif" alt="Collaborative Editor Demo" style="width:100%;max-width:100vw;height:auto;display:block;" />
 </div>
+
+<video src="./public/demo.mp4" width="400" controls></video>
 <!-- markdownlint-enable MD033 -->
 
 ---
