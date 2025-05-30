@@ -4,7 +4,7 @@ import "./styles.css";
 import React from "react";
 import Link from "next/link";
 import { useCollaboration } from "@/hooks/use-collaboration";
-import CollaborativeEditor from "@/components/editor/CollaborativeEditor";
+import { CollaborativeEditor } from "@/components/editor/CollaborativeEditor";
 
 export default function SlateEditorPage() {
   const { connected, activeUsers, sharedType, provider, username } =

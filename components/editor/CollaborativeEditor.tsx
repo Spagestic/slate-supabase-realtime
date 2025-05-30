@@ -174,5 +174,3 @@ export function CollaborativeEditor({
     </Slate>
   );
 }
-
-export default CollaborativeEditor;
