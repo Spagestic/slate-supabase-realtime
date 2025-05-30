@@ -7,7 +7,6 @@ import { createEditor, Descendant, Editor, Transforms } from "slate";
 import { Slate, Editable, withReact } from "slate-react";
 import { withHistory } from "slate-history";
 import { withCursors, withYjs, YjsEditor } from "@slate-yjs/core";
-import { useRemoteCursorOverlayPositions } from "@slate-yjs/react";
 import { createClient } from "@/lib/supabase/client";
 import * as Y from "yjs";
 import {
@@ -16,133 +15,14 @@ import {
   applyAwarenessUpdate,
 } from "y-protocols/awareness";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import CodeElement from "@/components/editor/CodeElement";
+import DefaultElement from "@/components/editor/DefaultElement";
+import Leaf from "@/components/editor/Leaf";
+import Cursors from "@/components/editor/Cursors";
+import CustomEditor from "@/components/editor/CustomEditor";
 
 // Define the initial value for the editor
-const initialValue: Descendant[] = [
-  {
-    children: [{ text: "" }],
-  },
-];
-
-// Define custom element components
-const CodeElement = (props: any) => {
-  return (
-    <pre
-      {...props.attributes}
-      style={{ backgroundColor: "#f4f4f4", padding: "8px" }}
-    >
-      <code>{props.children}</code>
-    </pre>
-  );
-};
-
-const DefaultElement = (props: any) => {
-  return <p {...props.attributes}>{props.children}</p>;
-};
-
-// Define custom leaf components
-const Leaf = (props: any) => {
-  return (
-    <span
-      {...props.attributes}
-      style={{ fontWeight: props.leaf.bold ? "bold" : "normal" }}
-    >
-      {props.children}
-    </span>
-  );
-};
-
-// Cursors component for multiplayer functionality
-function Cursors({ children }: { children: React.ReactNode }) {
-  const containerRef = React.useRef<HTMLElement>(null);
-  const [cursors] = useRemoteCursorOverlayPositions({
-    containerRef: containerRef as React.RefObject<HTMLElement>,
-  });
-
-  return (
-    <div className="cursors" ref={containerRef as any}>
-      {children}
-      {cursors.map((cursor) => (
-        <Selection key={cursor.clientId} {...cursor} />
-      ))}
-    </div>
-  );
-}
-
-function Selection({ data, selectionRects, caretPosition }: any) {
-  if (!data) {
-    return null;
-  }
-
-  const selectionStyle = {
-    backgroundColor: data.color,
-  };
-
-  return (
-    <>
-      {selectionRects.map((position: any, i: number) => (
-        <div
-          style={{ ...selectionStyle, ...position }}
-          className="selection"
-          key={i}
-        />
-      ))}
-      {caretPosition && <Caret caretPosition={caretPosition} data={data} />}
-    </>
-  );
-}
-
-function Caret({ caretPosition, data }: any) {
-  const caretStyle = {
-    ...caretPosition,
-    background: data?.color,
-  };
-
-  const labelStyle = {
-    transform: "translateY(-100%)",
-    background: data?.color,
-  };
-
-  return (
-    <div style={caretStyle} className="caretMarker">
-      <div className="caret" style={labelStyle}>
-        {data?.name}
-      </div>
-    </div>
-  );
-}
-
-// Define custom editor commands
-const CustomEditor = {
-  isBoldMarkActive(editor: any) {
-    const marks = Editor.marks(editor);
-    return marks ? (marks as any).bold === true : false;
-  },
-
-  isCodeBlockActive(editor: any) {
-    const [match] = Editor.nodes(editor, {
-      match: (n: any) => n.type === "code",
-    });
-
-    return !!match;
-  },
-
-  toggleBoldMark(editor: any) {
-    const isActive = CustomEditor.isBoldMarkActive(editor);
-    if (isActive) {
-      Editor.removeMark(editor, "bold");
-    } else {
-      Editor.addMark(editor, "bold", true);
-    }
-  },
-
-  toggleCodeBlock(editor: any) {
-    const isActive = CustomEditor.isCodeBlockActive(editor);
-    Transforms.setNodes(editor, { type: isActive ? null : "code" } as any, {
-      match: (n: any) => Editor.isBlock(editor, n),
-    });
-  },
-};
+const initialValue: Descendant[] = [{ children: [{ text: "" }] }]; // Inline component and command definitions removed; using extracted modules instead
 
 export default function SlateEditor({ id }: { id: Promise<string> }) {
   const supabase = createClient();
