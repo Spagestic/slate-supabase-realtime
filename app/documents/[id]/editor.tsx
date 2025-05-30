@@ -15,6 +15,7 @@ import {
   applyAwarenessUpdate,
 } from "y-protocols/awareness";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import debounce from "lodash/debounce";
 import CodeElement from "@/components/editor/CodeElement";
 import DefaultElement from "@/components/editor/DefaultElement";
 import Leaf from "@/components/editor/Leaf";
@@ -24,111 +25,84 @@ import CustomEditor from "@/components/editor/CustomEditor";
 // Define the initial value for the editor
 const initialValue: Descendant[] = [{ children: [{ text: "" }] }]; // Inline component and command definitions removed; using extracted modules instead
 
-export default function SlateEditor({ id }: { id: Promise<string> }) {
+export default function SlateEditor({
+  id,
+  content,
+}: {
+  id: string;
+  content: string | Descendant[] | null;
+}) {
   const supabase = createClient();
-  const [documentId, setDocumentId] = useState<string>("");
+  const documentId = id;
   const [username, setUsername] = useState("");
   type ActiveUser = { username: string; [key: string]: any };
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [connected, setConnected] = useState(false);
   const [sharedType, setSharedType] = useState<Y.XmlText | null>(null);
   const [provider, setProvider] = useState<any>(null);
-  const [documentLoaded, setDocumentLoaded] = useState(false);
-  const [initialContent, setInitialContent] =
-    useState<Descendant[]>(initialValue);
-  const channelRef = React.useRef<RealtimeChannel | null>(null);
-  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  // Resolve the id Promise and load document
-  useEffect(() => {
-    async function resolveIdAndLoadDocument() {
+  const documentLoaded = true;
+
+  // Parse content from database (could be JSON string or already parsed)
+  const initialContent = useMemo(() => {
+    if (!content) return initialValue;
+
+    // If content is a string, parse it
+    if (typeof content === "string") {
       try {
-        const resolvedId = await id;
-        setDocumentId(resolvedId);
-
-        // Load document from database
-        const { data: document, error } = await supabase
-          .from("document")
-          .select("*")
-          .eq("id", resolvedId)
-          .single();
-
-        if (error) {
-          console.error("Error loading document:", error);
-          setDocumentLoaded(true);
-          return;
+        const parsed = JSON.parse(content);
+        // Ensure it's a valid Descendant array
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-        if (document?.content) {
-          try {
-            // Since content is stored as jsonb, it's already parsed by Supabase
-            let parsedContent = document.content;
-
-            // If it's still a string (legacy data), parse it
-            if (typeof parsedContent === "string") {
-              parsedContent = JSON.parse(parsedContent);
-            }
-
-            // Validate the content is a valid Slate document
-            if (Array.isArray(parsedContent) && parsedContent.length > 0) {
-              console.log(
-                "Loaded document content from database:",
-                parsedContent
-              );
-              setInitialContent(parsedContent);
-            } else {
-              console.log(
-                "Document content is empty or invalid, using default"
-              );
-              setInitialContent(initialValue);
-            }
-          } catch (error) {
-            console.error("Error parsing document content:", error);
-            setInitialContent(initialValue);
-          }
-        } else {
-          console.log("No document content found, using default");
-          setInitialContent(initialValue);
-        }
-
-        setDocumentLoaded(true);
       } catch (error) {
-        console.error("Error resolving document ID:", error);
-        setDocumentLoaded(true);
+        console.warn("Failed to parse content JSON:", error);
       }
     }
 
-    resolveIdAndLoadDocument();
-  }, [id, supabase]); // Function to save document to database with minimal debouncing for real-time collaboration
-  const saveDocument = useCallback(
-    async (content: Descendant[]) => {
-      if (!documentId) return;
+    // If content is already an array, use it
+    if (Array.isArray(content) && content.length > 0) {
+      return content;
+    }
 
-      // Clear existing timeout
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      } // Set a very short timeout to batch rapid changes while maintaining responsiveness
-      saveTimeoutRef.current = setTimeout(async () => {
+    // Fallback to initial value
+    return initialValue;
+  }, [content]);
+  const channelRef = React.useRef<RealtimeChannel | null>(null);
+  const isLocalChangeRef = React.useRef(false);
+  const saveDocument = useMemo(
+    () =>
+      debounce(async (content: Descendant[]) => {
+        if (!documentId) {
+          console.warn("Cannot save document: documentId is missing");
+          return;
+        }
+
+        // Don't save if we're currently applying a database update
+        if (isLocalChangeRef.current) {
+          console.log("Skipping save - applying database update");
+          return;
+        }
+
         try {
-          console.log("Saving document content:", content);
+          console.log("Saving document content:", {
+            documentId,
+            contentLength: content.length,
+            content: JSON.stringify(content),
+          });
 
-          // For jsonb column, we can directly store the JavaScript object
-          const { error } = await supabase
+          await supabase
             .from("document")
             .update({
-              content: content, // Store as jsonb directly, no need to stringify
+              content: content,
               updated_at: new Date().toISOString(),
             })
             .eq("id", documentId);
 
-          if (error) {
-            console.error("Error saving document:", error);
-          } else {
-            console.log("Document saved successfully to database");
-          }
+          console.log("Document saved successfully to database");
         } catch (error) {
           console.error("Error saving document:", error);
         }
-      }, 100); // Very short debounce (100ms) for real-time feel
-    },
+      }, 100), // 1 second debounce like Lexical example
     [documentId, supabase]
   );
 
@@ -147,7 +121,7 @@ export default function SlateEditor({ id }: { id: Promise<string> }) {
   useEffect(() => {
     if (!documentId || !documentLoaded) return;
 
-    const CHANNEL = `slate-editor-example-${documentId}`;
+    const CHANNEL = `document-${documentId}`;
     const yDoc = new Y.Doc();
     const sharedDoc = yDoc.get("slate", Y.XmlText);
     const awareness = new Awareness(yDoc);
@@ -169,9 +143,46 @@ export default function SlateEditor({ id }: { id: Promise<string> }) {
           }
         });
       });
-
       setActiveUsers(users);
-    }); // Handle document updates via broadcast
+    });
+
+    // Listen for real-time database changes on the document table
+    channel.on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "document",
+        filter: `id=eq.${documentId}`,
+      },
+      (payload) => {
+        console.log("Database change detected:", payload);
+
+        // Skip if this is our own change (we could track this with a timestamp or user ID)
+        const newData = payload.new;
+        if (newData && newData.content) {
+          try {
+            isLocalChangeRef.current = true;
+
+            // Parse the content if it's a string, otherwise use it directly
+            const content =
+              typeof newData.content === "string"
+                ? JSON.parse(newData.content)
+                : newData.content;
+
+            console.log("Applying database content update:", content);
+
+            // Update the editor with the new content
+            // Note: This will trigger Slate's onChange, but we've set isLocalChangeRef to skip saving
+            // We need to be careful here as direct setValue can interfere with Yjs
+          } catch (error) {
+            console.error("Error applying database update:", error);
+          } finally {
+            isLocalChangeRef.current = false;
+          }
+        }
+      }
+    ); // Handle document updates via broadcast
     channel.on("broadcast", { event: "yjs-update" }, (payload) => {
       // Skip if this is our own update
       if (payload.payload.sender === yDoc.clientID) return;
@@ -440,6 +451,14 @@ export default function SlateEditor({ id }: { id: Promise<string> }) {
               editor={editor}
               initialValue={initialContent}
               onChange={(value) => {
+                // Skip processing if this is a remote change to avoid infinite loops
+                if (isLocalChangeRef.current) {
+                  console.log(
+                    "Skipping onChange - remote change being applied"
+                  );
+                  return;
+                }
+
                 // Always update our ref with the latest value
                 currentEditorValue.current = value;
 
@@ -457,10 +476,10 @@ export default function SlateEditor({ id }: { id: Promise<string> }) {
                 });
 
                 if (isAstChange) {
-                  // For collaborative editing, we should save all local changes
-                  // The YJS layer will handle merging and conflict resolution
-                  // We use a short debounce to batch rapid typing while maintaining real-time feel
-                  console.log("Content change detected, triggering save...");
+                  // This is a local content change, save it to the database
+                  console.log(
+                    "Local content change detected, triggering save..."
+                  );
                   saveDocument(value);
                 } else {
                   console.log("Selection-only change, skipping save");

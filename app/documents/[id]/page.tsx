@@ -3,9 +3,9 @@ import SlateEditor from "./editor";
 import { createClient } from "@/lib/supabase/server";
 
 interface DocumentPageProps {
-  params: {
-    id: Promise<string>;
-  };
+  params: Promise<{
+    id: string;
+  }>;
 }
 
 export default async function page({ params }: DocumentPageProps) {
@@ -20,9 +20,8 @@ export default async function page({ params }: DocumentPageProps) {
     console.error("Error fetching document:", error);
     return <div>Error loading document</div>;
   }
+
   return (
-    <div>
-      {document && <SlateEditor id={document.id} content={document?.content} />}
-    </div>
+    <div>{document && <SlateEditor id={id} content={document.content} />}</div>
   );
 }
