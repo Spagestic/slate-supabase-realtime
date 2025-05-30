@@ -7,8 +7,15 @@ import { useCollaboration } from "@/hooks/use-collaboration";
 import { CollaborativeEditor } from "@/components/editor/CollaborativeEditor";
 
 export default function SlateEditorPage() {
-  const { connected, activeUsers, sharedType, provider, username } =
-    useCollaboration();
+  const {
+    connected,
+    activeUsers,
+    sharedType,
+    provider,
+    username,
+    isFirstUser,
+    initialContent,
+  } = useCollaboration();
 
   if (!connected || !sharedType || !provider) {
     return (
@@ -41,6 +48,12 @@ export default function SlateEditorPage() {
               sharedType={sharedType}
               provider={provider}
               username={username}
+              initialContent={initialContent}
+              isFirstUser={isFirstUser}
+              onSave={(content) => {
+                // Handle save logic here if needed
+                console.log("Content saved:", content);
+              }}
             />
           </div>
         </div>
