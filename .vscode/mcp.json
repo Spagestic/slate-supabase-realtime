@@ -1,0 +1,37 @@
+{
+  "servers": {
+    "Context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "plate": {
+      // "description": "Plate editors, plugins and components",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "shadcn@canary", "registry:mcp"],
+      "env": {
+        "REGISTRY_URL": "https://platejs.org/r/registry.json"
+      }
+    },
+    "plate-docs": {
+      // "description": "Plate documentation",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "shadcn@canary", "registry:mcp"],
+      "env": {
+        "REGISTRY_URL": "https://platejs.org/r/registry-docs.json"
+      }
+      // "supabase": {
+      //   "command": "npx",
+      //   "args": [
+      //     "-y",
+      //     "@supabase/mcp-server-supabase@latest",
+      //     "--access-token",
+      //     "<personal-access-token>"
+      //   ]
+      // },
+      // https://github.com/modelcontextprotocol/servers/tree/main/src/fetch
+    }
+  }
+}
