@@ -26,6 +26,7 @@ interface CollaborativeEditorProps {
   style?: React.CSSProperties;
   initialContent?: Descendant[];
   onSave?: (content: Descendant[]) => void;
+  isFirstUser?: boolean;
 }
 
 export function CollaborativeEditor({
@@ -40,9 +41,13 @@ export function CollaborativeEditor({
   },
   initialContent = initialValue,
   onSave,
+  isFirstUser = false,
 }: CollaborativeEditorProps) {
   // Create a ref to track the current editor value
   const currentEditorValue = useRef<Descendant[]>(initialContent);
+  // Track if we've already initialized the document
+  const initializedRef = useRef<boolean>(false);
+
   // Create collaborative editor
   const editor = useMemo(() => {
     if (!sharedType || !provider) {
@@ -58,9 +63,7 @@ export function CollaborativeEditor({
           color: generateUserColor(),
         },
       })
-    );
-
-    // Ensure editor always has at least 1 valid child
+    ); // Ensure editor always has at least 1 valid child
     const { normalizeNode } = e;
     e.normalizeNode = (entry) => {
       const [node] = entry;
@@ -69,20 +72,50 @@ export function CollaborativeEditor({
         return normalizeNode(entry);
       }
 
-      Transforms.insertNodes(e, initialValue, { at: [0] });
+      // Only initialize if:
+      // 1. The Yjs document is empty
+      // 2. We haven't already initialized
+      // 3. We are the first user (to prevent duplication when joining existing sessions)
+      if (
+        sharedType &&
+        sharedType.length === 0 &&
+        !initializedRef.current &&
+        isFirstUser
+      ) {
+        console.log(
+          "First user with empty Yjs document, initializing with content"
+        );
+        initializedRef.current = true;
+        Transforms.insertNodes(e, initialContent, { at: [0] });
+      } else if (!isFirstUser && sharedType && sharedType.length === 0) {
+        console.log("Not first user, waiting for content from other clients");
+      }
     };
-
     console.log("Collaborative editor created successfully");
     return e;
-  }, [sharedType, provider, username]);
+  }, [sharedType, provider, username, initialContent, isFirstUser]);
 
   // Connect/disconnect YjsEditor
   useEffect(() => {
     if (sharedType && editor && !YjsEditor.connected(editor as any)) {
       console.log("Connecting YjsEditor to document");
       YjsEditor.connect(editor as any);
+
+      // Listen for Yjs document updates
+      const onYjsUpdate = () => {
+        // After Yjs updates, we've definitely initialized
+        initializedRef.current = true;
+      };
+
+      if (sharedType.observeDeep) {
+        sharedType.observeDeep(onYjsUpdate);
+      }
+
       return () => {
         console.log("Disconnecting YjsEditor from document");
+        if (sharedType.unobserveDeep) {
+          sharedType.unobserveDeep(onYjsUpdate);
+        }
         YjsEditor.disconnect(editor as any);
       };
     }
@@ -156,10 +189,19 @@ export function CollaborativeEditor({
     [editor, onSave]
   );
 
+  // Use an empty initial value for collaborative editing
+  // Yjs will properly sync content after connection
+  const slateInitialValue = useMemo(() => {
+    if (sharedType && provider) {
+      return [{ children: [{ text: "" }] }];
+    }
+    return initialContent;
+  }, [sharedType, provider, initialContent]);
+
   return (
     <Slate
       editor={editor}
-      initialValue={initialContent}
+      initialValue={slateInitialValue}
       onChange={handleChange}
     >
       <Cursors>

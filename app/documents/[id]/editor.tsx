@@ -1,13 +1,11 @@
 "use client";
 
 import "@/app/styles.css";
-import React, { useMemo } from "react";
+import React from "react";
 import { Descendant } from "slate";
 import { useCollaboration } from "@/hooks/use-collaboration";
 import { CollaborativeEditor } from "@/components/editor/CollaborativeEditor";
-
-// Define the initial value for the editor
-const initialValue: Descendant[] = [{ children: [{ text: "" }] }];
+import initialValue from "@/lib/editor/initialValue";
 
 export function SlateEditor({
   id,
@@ -18,30 +16,18 @@ export function SlateEditor({
 }) {
   const documentId = id;
 
-  // Parse content from database (could be JSON string or already parsed)
-  const initialContent = useMemo(() => {
+  // Parse content if it's a string (from JSON in database)
+  const initialContent = React.useMemo(() => {
     if (!content) return initialValue;
-
-    // If content is a string, parse it
     if (typeof content === "string") {
       try {
-        const parsed = JSON.parse(content);
-        // Ensure it's a valid Descendant array
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (error) {
-        console.warn("Failed to parse content JSON:", error);
+        return JSON.parse(content) as Descendant[];
+      } catch (e) {
+        console.error("Failed to parse document content:", e);
+        return initialValue;
       }
     }
-
-    // If content is already an array, use it
-    if (Array.isArray(content) && content.length > 0) {
-      return content;
-    }
-
-    // Fallback to initial value
-    return initialValue;
+    return content;
   }, [content]);
 
   // Use the collaboration hook with database saving enabled
@@ -49,6 +35,15 @@ export function SlateEditor({
     documentId,
     enableDatabaseSaving: true,
   });
+
+  // If content is null or undefined, don't display the editor
+  if (!content) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-neutral-900 text-white">
+        <div>Loading document...</div>
+      </div>
+    );
+  }
 
   // Show loading state while connecting
   if (
@@ -87,6 +82,7 @@ export function SlateEditor({
               username={collaboration.username}
               initialContent={initialContent}
               onSave={collaboration.saveDocument}
+              isFirstUser={collaboration.isFirstUser}
               className="min-h-full p-4 focus:outline-none text-neutral-200"
               style={{
                 fontSize: "16px",
@@ -96,7 +92,7 @@ export function SlateEditor({
             />
           </div>
         </div>
-      </div>{" "}
+      </div>
     </div>
   );
 }

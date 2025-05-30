@@ -25,6 +25,7 @@ export interface CollaborationState {
   documentLoaded: boolean;
   initialContent: Descendant[];
   saveDocument?: (content: Descendant[]) => void;
+  isFirstUser: boolean;
 }
 
 export interface CollaborationHookOptions {
@@ -43,6 +44,7 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
   const [documentLoaded, setDocumentLoaded] = useState(false);
   const [initialContent, setInitialContent] =
     useState<Descendant[]>(initialValue);
+  const [isFirstUser, setIsFirstUser] = useState(true);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -157,8 +159,7 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
       Math.random() * 100
     )}`;
     setUsername(randomName);
-  }, []);
-  // Set up Yjs provider and document
+  }, []); // Set up Yjs provider and document
   useEffect(() => {
     if (!documentLoaded) return;
 
@@ -173,9 +174,7 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
 
     // Set up Supabase channel as our "provider"
     const channel = supabase.channel(channelName);
-    channelRef.current = channel;
-
-    // Handle presence for user list
+    channelRef.current = channel; // Handle presence for user list
     channel.on("presence", { event: "sync" }, () => {
       const state = channel.presenceState();
       const users: ActiveUser[] = [];
@@ -190,6 +189,13 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
       });
 
       setActiveUsers(users);
+      // Determine if we're the first user (only counting others, not ourselves)
+      const otherUsers = users.filter((user) => user.username !== username);
+      setIsFirstUser(otherUsers.length === 0);
+
+      if (otherUsers.length > 0) {
+        console.log("Other users present, will sync from existing state");
+      }
     });
 
     // Handle document updates via broadcast
@@ -230,9 +236,7 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
           recipient: payload.payload.sender,
         },
       });
-    });
-
-    // Handle state responses
+    }); // Handle state responses
     channel.on("broadcast", { event: "yjs-state-response" }, (payload) => {
       // Only process if this response is for us
       if (payload.payload.recipient !== yDoc.clientID) return;
@@ -396,7 +400,6 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
     setProvider(null);
     setActiveUsers([]);
   }, []);
-
   return {
     connected,
     sharedType,
@@ -406,6 +409,7 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
     documentLoaded,
     initialContent,
     saveDocument: options.enableDatabaseSaving ? saveDocument : undefined,
+    isFirstUser,
     disconnect,
   };
 }
