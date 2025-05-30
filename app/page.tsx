@@ -16,6 +16,7 @@ import {
   applyAwarenessUpdate,
 } from "y-protocols/awareness";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import Link from "next/link";
 
 // Channel name - using a unique ID to ensure both instances connect to the same channel
 const CHANNEL = "slate-editor-example-6mp9vmt";
@@ -495,7 +496,10 @@ export default function SlateEditorPage() {
       <footer className="">
         <p className="text-muted-foreground text-xs text-center py-4">
           This is a temporary collaborative editor, please be aware that your
-          changes may not be saved.
+          changes may not be saved. For persistent storage, please visit{" "}
+          <Link href="/documents" className="text-blue-500 hover:underline">
+            here
+          </Link>
         </p>
       </footer>
     </div>
