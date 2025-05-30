@@ -1,8 +1,8 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import CreateDocumentBtn from "./create-document-btn";
-import DeleteDocumentBtn from "./delete-document-btn";
+import CreateDocumentBtn from "./components/create-document-btn";
+import DeleteDocumentBtn from "./components/delete-document-btn";
 
 export default async function page() {
   const supabase = await createClient();
