@@ -1,5 +1,5 @@
 import React from "react";
-import SlateEditor from "./editor";
+import { SlateEditor } from "./editor";
 import { createClient } from "@/lib/supabase/server";
 
 interface DocumentPageProps {
@@ -13,7 +13,7 @@ export default async function page({ params }: DocumentPageProps) {
   const supabase = await createClient();
   const { data: document, error } = await supabase
     .from("document")
-    .select("*")
+    .select("id, content, title")
     .eq("id", id)
     .single();
   if (error) {
@@ -21,7 +21,5 @@ export default async function page({ params }: DocumentPageProps) {
     return <div>Error loading document</div>;
   }
 
-  return (
-    <div>{document && <SlateEditor id={id} content={document.content} />}</div>
-  );
+  return <SlateEditor id={id} content={document.content} />;
 }
