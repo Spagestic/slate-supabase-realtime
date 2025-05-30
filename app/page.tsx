@@ -491,6 +491,13 @@ export default function SlateEditorPage() {
           </div>
         </div>
       </div>
+
+      <footer className="">
+        <p className="text-muted-foreground text-xs text-center py-4">
+          This is a temporary collaborative editor, please be aware that your
+          changes may not be saved.
+        </p>
+      </footer>
     </div>
   );
 }
