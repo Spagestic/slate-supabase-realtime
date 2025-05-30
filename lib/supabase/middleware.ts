@@ -32,12 +32,15 @@ export async function updateSession(request: NextRequest) {
   // IMPORTANT: DO NOT REMOVE auth.getUser()
   const {
     data: { user },
-  } = await supabase.auth.getUser(); // Allow access to the root page ("/") and public routes even if the user is not logged in
-  const publicRoutes = ["/"];
+  } = await supabase.auth.getUser();
+
+  // Allow access to the root page ("/") and public routes even if the user is not logged in
+  const publicRoutes = ["/", "/documents"];
   const isPublicRoute =
     publicRoutes.some((route) => request.nextUrl.pathname === route) ||
     request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/auth");
+    request.nextUrl.pathname.startsWith("/auth") ||
+    request.nextUrl.pathname.startsWith("/documents/"); // Allow all document routes
 
   if (!user && !isPublicRoute) {
     // No user and the route is not public, redirect to login
