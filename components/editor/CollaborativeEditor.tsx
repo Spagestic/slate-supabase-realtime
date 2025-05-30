@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo, useEffect, useCallback } from "react";
-import { createEditor, Editor, Transforms } from "slate";
+import React, { useMemo, useEffect, useCallback, useRef } from "react";
+import { createEditor, Editor, Transforms, Descendant } from "slate";
 import {
   Slate,
   Editable,
@@ -24,6 +24,8 @@ interface CollaborativeEditorProps {
   username: string;
   className?: string;
   style?: React.CSSProperties;
+  initialContent?: Descendant[];
+  onSave?: (content: Descendant[]) => void;
 }
 
 export function CollaborativeEditor({
@@ -36,7 +38,11 @@ export function CollaborativeEditor({
     fontFamily: "'Inter', sans-serif",
     lineHeight: "1.6",
   },
+  initialContent = initialValue,
+  onSave,
 }: CollaborativeEditorProps) {
+  // Create a ref to track the current editor value
+  const currentEditorValue = useRef<Descendant[]>(initialContent);
   // Create collaborative editor
   const editor = useMemo(() => {
     if (!sharedType || !provider) {
@@ -118,9 +124,44 @@ export function CollaborativeEditor({
     },
     [editor]
   );
+  const handleChange = useCallback(
+    (value: Descendant[]) => {
+      // Always update our ref with the latest value
+      currentEditorValue.current = value;
+
+      if (onSave) {
+        // Check if this is an actual content change, not just a selection change
+        const isAstChange = editor.operations.some(
+          (op) => "set_selection" !== op.type
+        );
+
+        console.log("Slate onChange triggered:", {
+          isAstChange,
+          operationsCount: editor.operations.length,
+          operations: editor.operations.map((op) => op.type),
+          valueLength: value.length,
+        });
+
+        if (isAstChange) {
+          // For collaborative editing, we should save all local changes
+          // The YJS layer will handle merging and conflict resolution
+          // We use a short debounce to batch rapid typing while maintaining real-time feel
+          console.log("Content change detected, triggering save...");
+          onSave(value);
+        } else {
+          console.log("Selection-only change, skipping save");
+        }
+      }
+    },
+    [editor, onSave]
+  );
 
   return (
-    <Slate editor={editor} initialValue={initialValue}>
+    <Slate
+      editor={editor}
+      initialValue={initialContent}
+      onChange={handleChange}
+    >
       <Cursors>
         <Editable
           className={className}

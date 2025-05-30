@@ -8,6 +8,8 @@ import {
   applyAwarenessUpdate,
 } from "y-protocols/awareness";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { Descendant } from "slate";
+import initialValue from "@/lib/editor/initialValue";
 
 // Channel name - using a unique ID to ensure both instances connect to the same channel
 const CHANNEL = "slate-editor-example-6mp9vmt";
@@ -20,10 +22,15 @@ export interface CollaborationState {
   provider: any | null;
   activeUsers: ActiveUser[];
   username: string;
+  documentLoaded: boolean;
+  initialContent: Descendant[];
+  saveDocument?: (content: Descendant[]) => void;
 }
 
 export interface CollaborationHookOptions {
   channelName?: string;
+  documentId?: string;
+  enableDatabaseSaving?: boolean;
 }
 
 export function useCollaboration(options: CollaborationHookOptions = {}) {
@@ -33,7 +40,112 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
   const [connected, setConnected] = useState(false);
   const [sharedType, setSharedType] = useState<Y.XmlText | null>(null);
   const [provider, setProvider] = useState<any>(null);
+  const [documentLoaded, setDocumentLoaded] = useState(false);
+  const [initialContent, setInitialContent] =
+    useState<Descendant[]>(initialValue);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Document saving function with debouncing
+  const saveDocument = useCallback(
+    async (content: Descendant[]) => {
+      if (!options.documentId || !options.enableDatabaseSaving) return;
+
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Set a very short timeout to batch rapid changes while maintaining responsiveness
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          console.log("Saving document content:", content);
+
+          // For jsonb column, we can directly store the JavaScript object
+          const { error } = await supabase
+            .from("document")
+            .update({
+              content: content, // Store as jsonb directly, no need to stringify
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", options.documentId);
+
+          if (error) {
+            console.error("Error saving document:", error);
+          } else {
+            console.log("Document saved successfully to database");
+          }
+        } catch (error) {
+          console.error("Error saving document:", error);
+        }
+      }, 100); // Very short debounce (100ms) for real-time feel
+    },
+    [options.documentId, options.enableDatabaseSaving, supabase]
+  );
+
+  // Load document from database
+  useEffect(() => {
+    async function loadDocument() {
+      if (!options.documentId || !options.enableDatabaseSaving) {
+        setDocumentLoaded(true);
+        return;
+      }
+
+      try {
+        // Load document from database
+        const { data: document, error } = await supabase
+          .from("document")
+          .select("*")
+          .eq("id", options.documentId)
+          .single();
+
+        if (error) {
+          console.error("Error loading document:", error);
+          setDocumentLoaded(true);
+          return;
+        }
+
+        if (document?.content) {
+          try {
+            // Since content is stored as jsonb, it's already parsed by Supabase
+            let parsedContent = document.content;
+
+            // If it's still a string (legacy data), parse it
+            if (typeof parsedContent === "string") {
+              parsedContent = JSON.parse(parsedContent);
+            }
+
+            // Validate the content is a valid Slate document
+            if (Array.isArray(parsedContent) && parsedContent.length > 0) {
+              console.log(
+                "Loaded document content from database:",
+                parsedContent
+              );
+              setInitialContent(parsedContent);
+            } else {
+              console.log(
+                "Document content is empty or invalid, using default"
+              );
+              setInitialContent(initialValue);
+            }
+          } catch (error) {
+            console.error("Error parsing document content:", error);
+            setInitialContent(initialValue);
+          }
+        } else {
+          console.log("No document content found, using default");
+          setInitialContent(initialValue);
+        }
+
+        setDocumentLoaded(true);
+      } catch (error) {
+        console.error("Error loading document:", error);
+        setDocumentLoaded(true);
+      }
+    }
+
+    loadDocument();
+  }, [options.documentId, options.enableDatabaseSaving, supabase]);
 
   // Generate random username
   useEffect(() => {
@@ -46,15 +158,21 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
     )}`;
     setUsername(randomName);
   }, []);
-
   // Set up Yjs provider and document
   useEffect(() => {
+    if (!documentLoaded) return;
+
     const yDoc = new Y.Doc();
     const sharedDoc = yDoc.get("slate", Y.XmlText);
     const awareness = new Awareness(yDoc);
 
+    // Use document-specific channel if documentId is provided
+    const channelName = options.documentId
+      ? `slate-editor-example-${options.documentId}`
+      : options.channelName || CHANNEL;
+
     // Set up Supabase channel as our "provider"
-    const channel = supabase.channel(options.channelName || CHANNEL);
+    const channel = supabase.channel(channelName);
     channelRef.current = channel;
 
     // Handle presence for user list
@@ -261,7 +379,13 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
       awareness.destroy();
       yDoc.destroy();
     };
-  }, [supabase, username, options.channelName]);
+  }, [
+    supabase,
+    username,
+    options.channelName,
+    options.documentId,
+    documentLoaded,
+  ]);
 
   const disconnect = useCallback(() => {
     if (channelRef.current) {
@@ -279,6 +403,9 @@ export function useCollaboration(options: CollaborationHookOptions = {}) {
     provider,
     activeUsers,
     username,
+    documentLoaded,
+    initialContent,
+    saveDocument: options.enableDatabaseSaving ? saveDocument : undefined,
     disconnect,
   };
 }
