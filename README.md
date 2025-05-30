@@ -31,7 +31,7 @@
   <img src="./public/demo.gif" alt="Collaborative Editor Demo" style="width:100%;max-width:100vw;height:auto;display:block;" />
 </div>
 
-<video src="./public/demo.mp4" width="400" controls></video>
+<video src="https://github.com/Spagestic/slate-supabase-realtime/blob/master/public/demo.mp4" width="400" controls></video>
 <!-- markdownlint-enable MD033 -->
 
 ---
